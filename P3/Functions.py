@@ -13,7 +13,7 @@ A = [[1, 0, 0, 0, 0, 0, 0, 0],
      [0, 0, 2, 0, 0, 0, 0, 0],
      [0, 0, 0, 0, 0, 0, 2, 12]]
 
-b = [0 for i in range(8)]
+# b = [0 for i in range(8)]
 def LoadDataFromFile(filename):
     x = []
     y = []
@@ -102,23 +102,89 @@ def setMatrixA(h1, h2, h3):
     A[5][3] = 6*h1
     A[7][7] = 6*h3
 
-def FunkcjaSklejania(X_val, Y_val):
-    # S0(x0) = f(x0)
-    b[0] = Y_val[0]
-    # S0(x1) = f(x1)
-    b[1] = Y_val[1]
-    # S1(x1) = f(x1)
-    b[2] = Y_val[1]
-    # S1(x2) = f(x2)
-    b[3] = Y_val[2]
+# def setMatrix(matrix):
+#     for i in range(len(matrix)/4):
+#         matrix[i*4+0][i*4+0] = 1
+#
+#         matrix[i*4+1][i*4+0] = 1
+#         # *h
+#         matrix[i*4+1][i*4+1] = 1
+#         # *h^2
+#         matrix[i*4+1][i*4+2] = 1
+#         # *h^3
+#         matrix[i*4+1][i*4+3] = 1
+#
+#         matrix[i*4+2][i*4+4] = 1
 
-    setMatrixA(X_val[1]-X_val[0], X_val[2]-X_val[1], X_val[2]-X_val[1])
-    r = linalg.solve(A, b)
+# n - num of intervals
+def FunkcjaSklejania(X_val, Y_val, n=2):
+    if len(X_val) <= n:
+        print("Za mało wartości X, za dużo przedziałów!")
+        return 0
+    # GENERATE X EDGES
+    x_edges_idx = [i for i in sample(range(1, len(X_val)-1), n-1)]
+    x_edges_idx.insert(0, 0)
+    x_edges_idx.append(len(X_val)-1)
+    # EACH INTERVAL TAKE 4 EQUATIONS
+    A_ = [[0 for i in range(n*4)] for i in range(n*4)]
+    b = []
+
+    # INIT B
+    # S0(x0) = f(x0)
+    b.append(Y_val[0])
+    # S0(x1) = f(x1)
+    b.append(Y_val[x_edges_idx[1]])
+    # EDGES S''(x0) = 0 && S''(n-1)(xn) = 0
+    b.append(0)
+    b.append(0)
+
+    h0 = X_val[x_edges_idx[1]] - X_val[x_edges_idx[0]]
+    # INIT A
+    A_[0][0] = 1
+    A_[1][0] = 1
+    A_[1][1] = h0
+    A_[1][2] = pow(h0, 2)
+    A_[1][3] = pow(h0, 3)
+    A_[2][2] = 2
+    A_[3][4*(n-1)+2] = 2
+    hn = X_val[x_edges_idx[-1]] - X_val[x_edges_idx[-2]]
+    A_[3][4*(n-1)+3] = 6*hn
+
+    for j in range(1, n):
+        # S0: xn - x(n-1)
+        h = X_val[x_edges_idx[j]] - X_val[x_edges_idx[j - 1]]
+        # an
+        A_[j * 4 + 0][j * 4 + 0] = 1
+        # an*bn(h)...
+        A_[j * 4 + 1][j * 4 + 0] = 1
+        A_[j * 4 + 1][j * 4 + 1] = h
+        A_[j * 4 + 1][j * 4 + 2] = pow(h, 2)
+        A_[j * 4 + 1][j * 4 + 3] = pow(h, 3)
+        # b(n-1)+2c(n-1)*h...-bn
+        A_[j * 4 + 2][(j - 1) * 4 + 1] = 1
+        A_[j * 4 + 2][(j - 1) * 4 + 2] = 2 * h
+        A_[j * 4 + 2][(j - 1) * 4 + 3] = 3 * pow(h, 2)
+        A_[j * 4 + 2][j * 4 + 1] = -1
+        # 2*c(n-1)*h-2cn
+        A_[j * 4 + 3][(j - 1) * 4 + 2] = 2
+        A_[j * 4 + 3][(j - 1) * 4 + 3] = 6 * h
+        A_[j * 4 + 3][j * 4 + 2] = -2
+
+        # Si(xS) = f(xS)
+        b.append(Y_val[x_edges_idx[j]])
+        # Si(xS+1) = f(xS+1)
+        b.append(Y_val[x_edges_idx[j+1]])
+        # Si-1(xS) - Si(xS) = 0
+        b.append(0)
+        # Si-1(xS) - Si(xS) = 0
+        b.append(0)
+
+        # setMatrixA(X_val[1]-X_val[0], X_val[2]-X_val[1], X_val[2]-X_val[1])
+    r = linalg.solve(A_, b)
     values = []
-    for i in range(0, len(X_val)-1):
-        for x in np.arange(int(X_val[i]), int(X_val[i+1]), 0.25):
-            h = x-int(X_val[i])
-            values.append(r[i*4+0] + r[i*4+1] * h + r[i*4+2] * pow(h, 2) + r[i*4+3] * pow(h, 3))
-    h = int(X_val[-1])-int(X_val[i])
-    values.append(r[i * 4 + 0] + r[i * 4 + 1] * h + r[i * 4 + 2] * pow(h, 2) + r[i * 4 + 3] * pow(h, 3))
+    for j in range(0, n):
+        for x in np.arange(int(X_val[x_edges_idx[j]]), int(X_val[x_edges_idx[j+1]]), 0.25):
+            h = x-int(X_val[x_edges_idx[j]])
+            values.append(r[j*4+0] + r[j*4+1] * h + r[j*4+2] * pow(h, 2) + r[j*4+3] * pow(h, 3))
+    values.append(Y_val[-1])
     return values
