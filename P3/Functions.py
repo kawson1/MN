@@ -125,6 +125,7 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
     x_edges_idx = [i for i in sample(range(1, len(X_val)-1), n-1)]
     x_edges_idx.insert(0, 0)
     x_edges_idx.append(len(X_val)-1)
+    x_edges_idx.sort()
     # EACH INTERVAL TAKE 4 EQUATIONS
     A_ = [[0 for i in range(n*4)] for i in range(n*4)]
     b = []
@@ -145,14 +146,14 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
     A_[1][1] = h0
     A_[1][2] = pow(h0, 2)
     A_[1][3] = pow(h0, 3)
-    A_[2][2] = 2
+    A_[2][2] = 1
     A_[3][4*(n-1)+2] = 2
     hn = X_val[x_edges_idx[-1]] - X_val[x_edges_idx[-2]]
     A_[3][4*(n-1)+3] = 6*hn
 
     for j in range(1, n):
         # S0: xn - x(n-1)
-        h = X_val[x_edges_idx[j]] - X_val[x_edges_idx[j - 1]]
+        h = X_val[x_edges_idx[j+1]] - X_val[x_edges_idx[j]]
         # an
         A_[j * 4 + 0][j * 4 + 0] = 1
         # an*bn(h)...
@@ -161,6 +162,7 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
         A_[j * 4 + 1][j * 4 + 2] = pow(h, 2)
         A_[j * 4 + 1][j * 4 + 3] = pow(h, 3)
         # b(n-1)+2c(n-1)*h...-bn
+        h = X_val[x_edges_idx[j]] - X_val[x_edges_idx[j-1]]
         A_[j * 4 + 2][(j - 1) * 4 + 1] = 1
         A_[j * 4 + 2][(j - 1) * 4 + 2] = 2 * h
         A_[j * 4 + 2][(j - 1) * 4 + 3] = 3 * pow(h, 2)
@@ -170,7 +172,7 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
         A_[j * 4 + 3][(j - 1) * 4 + 3] = 6 * h
         A_[j * 4 + 3][j * 4 + 2] = -2
 
-        # Si(xS) = f(xS)
+        # S(j-1)(xS) = f(xS)
         b.append(Y_val[x_edges_idx[j]])
         # Si(xS+1) = f(xS+1)
         b.append(Y_val[x_edges_idx[j+1]])
@@ -182,9 +184,12 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
         # setMatrixA(X_val[1]-X_val[0], X_val[2]-X_val[1], X_val[2]-X_val[1])
     r = linalg.solve(A_, b)
     values = []
+    x_values = []
     for j in range(0, n):
-        for x in np.arange(int(X_val[x_edges_idx[j]]), int(X_val[x_edges_idx[j+1]]), 0.25):
+        for x in range(int(X_val[x_edges_idx[j]]), int(X_val[x_edges_idx[j+1]])):
             h = x-int(X_val[x_edges_idx[j]])
             values.append(r[j*4+0] + r[j*4+1] * h + r[j*4+2] * pow(h, 2) + r[j*4+3] * pow(h, 3))
+            x_values.append(x)
     values.append(Y_val[-1])
-    return values
+    x_values.append(int(X_val[-1]))
+    return values, x_values
