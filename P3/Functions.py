@@ -1,19 +1,11 @@
+from copy import deepcopy
 from random import sample
 from numpy.linalg import linalg
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-A = [[1, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 1, 0, 0, 0],
-     [1, 2, 4, 8, 0, 0, 0, 0],
-     [0, 0, 0, 0, 1, 2, 4, 8],
-     [0, 1, 4, 12, 0, -1, 0, 0],
-     [0, 0, 2, 12, 0, 0, -2, 0],
-     [0, 0, 2, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 2, 12]]
 
-# b = [0 for i in range(8)]
 def LoadDataFromFile(filename):
     x = []
     y = []
@@ -59,62 +51,6 @@ def ComputeLagrange(x_values, y_values, x):
         result += phi_i * y_values[i]
     return result
 
-
-# n - NUMBER OF RANGES (MAX N = LEN(X)-1)
-# def FunkcjaSklejania(x_values, y_values, n):
-#     x_range = len(x_values) // n
-#     # CURRENT RANGE
-#     curr_S = 0
-#     curr_x = 0
-#     S = []
-#     for i in range(0, n-1):
-#         b[0] = y_values[curr_S]
-#         b[1] = b[2] = y_values[curr_S + x_range]
-#         b[3] = y_values[curr_S + 2*x_range]
-#         # r = [a0, b0, c0, d0, a1, b1, c1, d1]
-#         r = linalg.solve(A, b)
-#         print()
-#         for x in range(curr_S, curr_S+x_range):
-#             bracket = x+curr_x-x_values[i]
-#             S0 = r[0] + r[1]*bracket + r[2]*pow(bracket, 2) + r[3]*pow(bracket, 3)
-#             S.append(S0)
-#             curr_x += 1
-#         # -1 BECAUSE IF eg. X_RANGE=5 -> CURR_X=0 -> loop for 0...!19!
-#         curr_S += x_range
-#     for x in range(curr_x, curr_x + x_range):
-#         bracket = x+curr_x - x_values[i]
-#         S0 = r[4] + r[5] * bracket + r[6] * pow(bracket, 2) + r[7] * pow(bracket, 3)
-#         S.append(S0)
-#     return S
-
-# h1    -   S0(x1-x0)
-# h2    -   S1(x2-x1)
-# h3    -   Sn-1(xn-x(n-1))
-def setMatrixA(h1, h2, h3):
-    A[2][1] = h1
-    A[2][2] = pow(h1, 2)
-    A[2][3] = pow(h1, 3)
-    A[3][5] = h2
-    A[3][6] = pow(h2, 2)
-    A[3][7] = pow(h2, 3)
-    A[4][2] = 2*h1
-    A[4][3] = 3*pow(h1, 2)
-    A[5][3] = 6*h1
-    A[7][7] = 6*h3
-
-# def setMatrix(matrix):
-#     for i in range(len(matrix)/4):
-#         matrix[i*4+0][i*4+0] = 1
-#
-#         matrix[i*4+1][i*4+0] = 1
-#         # *h
-#         matrix[i*4+1][i*4+1] = 1
-#         # *h^2
-#         matrix[i*4+1][i*4+2] = 1
-#         # *h^3
-#         matrix[i*4+1][i*4+3] = 1
-#
-#         matrix[i*4+2][i*4+4] = 1
 
 # n - num of intervals
 def FunkcjaSklejania(X_val, Y_val, n=2):
@@ -192,4 +128,74 @@ def FunkcjaSklejania(X_val, Y_val, n=2):
             x_values.append(x)
     values.append(Y_val[-1])
     x_values.append(int(X_val[-1]))
-    return values, x_values
+    return x_values, values
+
+
+def PlotMetodaSklejania(x, y, N):
+    xx, yy = FunkcjaSklejania(x, y, N)
+    PlotData(x, y, "Wykres wzniesień - metoda sklejania", xx, yy)
+    return
+
+
+def PlotMetodaLagrange(x, y, N):
+    random_x, random_y = GetRandomXY(x, y, N)
+    yy = [ComputeLagrange(random_x, random_y, x_) for x_ in range(0, int(x[-1])+1)]
+    xx = [i for i in range(0, int(x[-1])+1)]
+    PlotData(x, y, "Wykres wzniesień - metoda Lagrange'a", xx, yy)
+    return
+
+
+def GetColumn(A, col):
+    return [row[col] for row in A]
+
+
+def Pivot(A, b):
+    swap_list = []
+    for row in range(len(A)):
+        for col in range(len(A)):
+            if A[row][row] == 0:
+                max_idx = 0
+                max = A[0][col]
+                for i in range(len(A)):
+                    if max < A[i][col]:
+                        max_idx = i
+                        max = A[i][col]
+                A[row][col], A[max_idx][col] = A[max_idx][col]
+
+
+
+def getLUValues(A):
+    m = len(A)
+    U = deepcopy(A)
+    L = [[0 for i in range(0, len(A))] for i in range(0, len(A))]
+    for i in range(0, len(A)):
+        L[i][i] = 1
+    for col in range(0, m-1):
+        for row in range(col+1, m):
+            L[row][col] = U[row][col]/U[col][col]
+            for k in range(col, m):
+                U[row][k] = U[row][k] - L[row][col] * U[col][k]
+    return L, U
+
+
+def LU(A, b):
+    # UxY = b -> Y
+    # LxX = Y -> X
+    L, U = getLUValues(A)
+    Y = [0 for i in range(0, len(L))]
+    X = [0 for i in range(0, len(L))]
+    # compute Y
+    Y[0] = b[0] / L[0][0]
+    for i in range(1, len(L)):
+        suma = 0
+        for j in range(0, i):
+            suma += L[i][j] * Y[j]
+        Y[i] = (b[i] - suma) / L[i][i]
+    # compute result X
+    X[len(L)-1] = Y[len(L)-1] / U[len(L)-1][len(L)-1]
+    for i in range(len(L)-2, -1, -1):
+        suma = 0
+        for j in range(i+1, len(L)):
+            suma += U[i][j] * X[j]
+        X[i] = (Y[i] - suma) / U[i][i]
+    return X
